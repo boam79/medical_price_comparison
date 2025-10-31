@@ -14,11 +14,13 @@ exports.handler = async (event) => {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Content-Type": "application/json",
   };
 
+  // HTTP 메서드 확인 (REST API와 HTTP API v2 모두 지원)
+  const httpMethod = event.requestContext?.http?.method || event.httpMethod;
+  
   // CORS preflight 처리
-  if (event.requestContext?.http?.method === "OPTIONS") {
+  if (httpMethod === "OPTIONS") {
     return {
       statusCode: 200,
       headers,
@@ -27,37 +29,54 @@ exports.handler = async (event) => {
   }
 
   try {
-    // 요청 본문 파싱
-    const body = JSON.parse(event.body || "{}");
+    // 요청 본문 파싱 (REST API와 HTTP API v2 모두 지원)
+    const body = typeof event.body === "string" ? JSON.parse(event.body) : event.body || {};
     const { endpoint, params } = body;
 
     if (!endpoint) {
       return {
         statusCode: 400,
-        headers,
+        headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify({ error: "endpoint is required" }),
       };
     }
 
-    // 공공데이터 API 호출
-    const url = new URL(endpoint);
-    Object.entries(params || {}).forEach(([key, value]) => {
-      url.searchParams.set(key, String(value));
-    });
+    // endpoint가 전체 URL이면 그대로 사용, 아니면 params와 조합
+    let targetUrl;
+    if (endpoint.startsWith("http://") || endpoint.startsWith("https://")) {
+      // 전체 URL인 경우
+      targetUrl = new URL(endpoint);
+      // params가 있으면 추가 파라미터로 설정
+      Object.entries(params || {}).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          targetUrl.searchParams.set(key, String(value));
+        }
+      });
+    } else {
+      // base URL만 있는 경우 params로 쿼리 구성
+      targetUrl = new URL(endpoint);
+      Object.entries(params || {}).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          targetUrl.searchParams.set(key, String(value));
+        }
+      });
+    }
 
-    const response = await fetch(url.toString(), {
+    // 공공데이터 API 호출
+    const response = await fetch(targetUrl.toString(), {
       headers: {
-        "User-Agent": "Mozilla/5.0",
+        "User-Agent": "Mozilla/5.0 (compatible; PublicDataProxy/1.0)",
       },
     });
 
     const responseText = await response.text();
+    const contentType = response.headers.get("content-type") || "application/xml";
 
     return {
       statusCode: response.status,
       headers: {
         ...headers,
-        "Content-Type": response.headers.get("content-type") || "application/xml",
+        "Content-Type": contentType,
       },
       body: responseText,
     };
@@ -65,7 +84,7 @@ exports.handler = async (event) => {
     console.error("Proxy error:", error);
     return {
       statusCode: 500,
-      headers,
+      headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify({
         error: "Internal server error",
         message: error.message,
