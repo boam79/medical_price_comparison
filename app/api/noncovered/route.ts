@@ -59,7 +59,14 @@ export async function GET(request: NextRequest) {
 
         // 안전한 데이터 추출
         const items = data.response?.body?.items;
-        const validItems: NonCoveredItem[] = Array.isArray(items) ? items : [];
+        let validItems: NonCoveredItem[] = [];
+        
+        if (Array.isArray(items)) {
+          validItems = items as NonCoveredItem[];
+        } else if (items) {
+          validItems = [items as NonCoveredItem];
+        }
+        
         allItems.push(...validItems);
       } catch (error) {
         console.error(`Error fetching items for ${orgCd}:`, error);
