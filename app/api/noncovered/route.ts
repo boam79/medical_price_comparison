@@ -44,9 +44,43 @@ export async function GET(request: NextRequest) {
         url.searchParams.set("_type", "json");
         url.searchParams.set("ykiho", orgCd);
 
-        const response = await fetch(url.toString(), {
-          next: { revalidate: 3600 }, // 1시간 캐시
-        });
+        // 프록시 URL이 설정되어 있으면 프록시를 통해 요청
+        const proxyUrl = process.env.PUBLIC_DATA_PROXY_URL;
+        let response: Response;
+
+        if (proxyUrl) {
+          try {
+            const proxyResponse = await fetch(`${proxyUrl}/proxy`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                endpoint: url.toString(),
+                params: {},
+              }),
+            });
+
+            if (!proxyResponse.ok) {
+              throw new Error(`Proxy request failed: ${proxyResponse.status}`);
+            }
+
+            const proxyText = await proxyResponse.text();
+            response = new Response(proxyText, {
+              status: proxyResponse.status,
+              headers: { "Content-Type": proxyResponse.headers.get("content-type") || "application/xml" },
+            });
+          } catch (proxyError) {
+            console.error("Proxy request failed, falling back to direct:", proxyError);
+            response = await fetch(url.toString(), {
+              next: { revalidate: 3600 },
+            });
+          }
+        } else {
+          response = await fetch(url.toString(), {
+            next: { revalidate: 3600 },
+          });
+        }
 
         if (!response.ok) {
           console.error(`API request failed for ${orgCd}:`, response.statusText);

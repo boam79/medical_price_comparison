@@ -42,22 +42,62 @@ export async function GET(request: NextRequest) {
     if (gugun) url.searchParams.set("sgguCd", gugun);
     if (searchTerm) url.searchParams.set("yadmNm", searchTerm);
 
-    let response = await fetch(url.toString(), {
-      next: { revalidate: 120 },
-      cache: "no-store",
-    });
+    // 프록시 URL이 설정되어 있으면 프록시를 통해 요청
+    const proxyUrl = process.env.PUBLIC_DATA_PROXY_URL;
+    let response: Response;
+
+    if (proxyUrl) {
+      // 프록시를 통해 요청
+      try {
+        const proxyResponse = await fetch(`${proxyUrl}/proxy`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            endpoint: url.toString(),
+            params: {},
+          }),
+        });
+
+        if (!proxyResponse.ok) {
+          throw new Error(`Proxy request failed: ${proxyResponse.status}`);
+        }
+
+        // 프록시 응답을 Response 객체로 변환
+        const proxyText = await proxyResponse.text();
+        response = new Response(proxyText, {
+          status: proxyResponse.status,
+          headers: { "Content-Type": proxyResponse.headers.get("content-type") || "application/xml" },
+        });
+      } catch (proxyError) {
+        console.error("Proxy request failed, falling back to direct:", proxyError);
+        // 프록시 실패 시 직접 요청으로 fallback
+        response = await fetch(url.toString(), {
+          next: { revalidate: 120 },
+          cache: "no-store",
+        });
+      }
+    } else {
+      // 프록시가 없으면 직접 요청
+      response = await fetch(url.toString(), {
+        next: { revalidate: 120 },
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        // 1차 실패 시 http 베이스로 재시도
+        const fbUrl = new URL(url.toString().replace(API_BASE_URL_PRIMARY, API_BASE_URL_FALLBACK));
+        response = await fetch(fbUrl.toString(), { next: { revalidate: 120 }, cache: "no-store" });
+      }
+    }
 
     if (!response.ok) {
-      // 1차 실패 시 http 베이스로 재시도
-      const fbUrl = new URL(url.toString().replace(API_BASE_URL_PRIMARY, API_BASE_URL_FALLBACK));
-      response = await fetch(fbUrl.toString(), { next: { revalidate: 120 }, cache: "no-store" });
-      if (!response.ok) {
-        console.error(`Hospitals API failed. primary=${url.toString()} status=${response.status}`);
-        return NextResponse.json(
-          { error: "Upstream API request failed", upstreamStatus: response.status },
-          { status: 502 }
-        );
-      }
+      console.error(`Hospitals API failed. url=${url.toString()} status=${response.status}`);
+      return NextResponse.json(
+        { error: "Upstream API request failed", upstreamStatus: response.status },
+        { status: 502 }
+      );
     }
 
     const data: HospitalApiResponse = await response.json();

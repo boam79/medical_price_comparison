@@ -50,7 +50,26 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <div className="min-h-screen flex flex-col">
+          <main className="flex-1">
+            {children}
+          </main>
+          <footer className="border-t bg-white/60 backdrop-blur py-6 text-sm text-gray-600">
+            <div className="max-w-5xl mx-auto px-4">
+              <div className="flex flex-col gap-2">
+                <p>
+                  제작자: <span className="font-medium">boam79</span> · 문의: <a className="underline" href="mailto:ckadltmfxhrxhrxhr@gmail.com">ckadltmfxhrxhrxhr@gmail.com</a>
+                </p>
+                <p>
+                  가격 정보는 공공데이터 응답을 기반으로 하며, 실제 진료비와 다를 수 있습니다.
+                </p>
+                <p>
+                  데이터 출처: <a className="underline" href="https://www.data.go.kr/" target="_blank" rel="noopener noreferrer">공공데이터포털</a> · 제공기관: 건강보험심사평가원
+                </p>
+              </div>
+            </div>
+          </footer>
+        </div>
       </body>
     </html>
   );
