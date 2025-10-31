@@ -94,8 +94,28 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       console.error(`Hospitals API failed. url=${url.toString()} status=${response.status}`);
+      
+      // 401 에러는 해외 IP 차단 가능성이 높음
+      if (response.status === 401) {
+        return NextResponse.json(
+          { 
+            error: "API 인증 실패",
+            message: "해외 IP 차단으로 인한 오류일 수 있습니다. 서울 리전 프록시 설정이 필요합니다.",
+            upstreamStatus: response.status,
+            hospitals: [],
+            totalCount: 0
+          },
+          { status: 502 }
+        );
+      }
+      
       return NextResponse.json(
-        { error: "Upstream API request failed", upstreamStatus: response.status },
+        { 
+          error: "Upstream API request failed", 
+          upstreamStatus: response.status,
+          hospitals: [],
+          totalCount: 0
+        },
         { status: 502 }
       );
     }

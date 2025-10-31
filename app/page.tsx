@@ -9,7 +9,18 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  const data = await res.json();
+  
+  if (!res.ok) {
+    const error = new Error(data.message || data.error || "An error occurred");
+    (error as any).status = res.status;
+    throw error;
+  }
+  
+  return data;
+};
 
 export default function Home() {
   const router = useRouter();
@@ -164,15 +175,23 @@ export default function Home() {
                 )}
                 {error && (
                   <div className="rounded-lg bg-red-50 p-4 text-red-600 dark:bg-red-900 dark:text-red-400">
-                    검색 중 오류가 발생했습니다: {error.message}
+                    <div className="font-semibold">검색 중 오류가 발생했습니다</div>
+                    <div className="mt-1 text-sm">
+                      {error.message || "알 수 없는 오류"}
+                    </div>
+                    {error.message?.includes("프록시") && (
+                      <div className="mt-2 text-xs">
+                        💡 해외 IP 차단 우회를 위해 서울 리전 프록시 설정이 필요합니다. PROXY_SETUP.md 파일을 참고하세요.
+                      </div>
+                    )}
                   </div>
                 )}
-                {data && data.hospitals.length === 0 && (
+                {data && (!data.hospitals || data.hospitals.length === 0) && (
                   <div className="py-8 text-center text-gray-500">
                     검색 결과가 없습니다.
                   </div>
                 )}
-                {data && data.hospitals.length > 0 && (
+                {data && data.hospitals && data.hospitals.length > 0 && (
                   <div className="max-h-96 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-4 dark:border-gray-700">
                     {data.hospitals.map((hospital) => (
                       <div
