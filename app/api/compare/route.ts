@@ -32,7 +32,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { items }: { items: NonCoveredItem[] } = await nonCoveredResponse.json();
+    const responseData: { items?: NonCoveredItem[] } = await nonCoveredResponse.json();
+    const items: NonCoveredItem[] = responseData.items || [];
 
     // 병원별로 항목 그룹화
     const itemsByHospital: Record<string, NonCoveredItem[]> = {};
