@@ -98,13 +98,44 @@ PUBLIC_DATA_API_KEY=your_api_key_here
 병원 목록 조회
 - Query params: `search`, `sido`, `gugun`
 
+실제 위임 대상(공공데이터포털)
+- Base: `https://apis.data.go.kr/B551182/hospInfoServicev2`
+- Path: `/getHospBasisList`
+- Params:
+  - `serviceKey`: URL 인코딩된 키 그대로 사용(예: `%2B`, `%3D` 유지)
+  - `pageNo`, `numOfRows`, `_type=json`
+  - `sidoCd`, `sgguCd`
+응답 주요 매핑:
+- `ykiho → org_cd`, `yadmNm → org_nm`, `sidoCdNm → si`, `sgguCdNm → gun`
+
 ### GET /api/noncovered
 비급여 항목 조회
 - Query params: `hospital_codes` (쉼표로 구분)
 
+실제 위임 대상(공공데이터포털)
+- Base: `http://apis.data.go.kr/B551182/nonPaymentDamtInfoService`
+- Path: `/getNonPaymentItemHospDtlList`
+- Params:
+  - `serviceKey`: URL 인코딩된 키 그대로 사용
+  - `pageNo`, `numOfRows`, `_type=json`
+  - `ykiho`: 암호화된 요양기호(병원 코드)
+응답 주요 매핑:
+- `npayKorNm → apc_nm`, `npayCd → apc_cd`, `curAmt → price`, `yadmNm → org_nm`, `ykiho → org_cd`
+
 ### POST /api/compare
 병원 간 비교
 - Body: `{ hospital_codes: string[], hospital_names: string[] }`
+
+### 서버사이드 중계 원칙
+- 브라우저에서 공공데이터포털 API를 직접 호출하지 않습니다(CORS/해외 IP 차단 이슈 방지).
+- Next.js Route Handler가 서버사이드에서 대행 호출 후 JSON으로 정규화해 반환합니다.
+- `serviceKey`는 반드시 "URL 인코딩된 값 그대로" 사용합니다(디코딩 시 401 Unauthorized 발생).
+
+### 로컬 호출 예시
+```bash
+curl "http://localhost:3000/api/hospitals?sido=310000&gugun=310603"
+curl "http://localhost:3000/api/noncovered?hospital_codes=JDQ4MT..."
+```
 
 ## 🎨 주요 기능 설명
 
@@ -146,6 +177,11 @@ npm run type-check
 2. Vercel에서 프로젝트 import
 3. 환경변수 설정 (`PUBLIC_DATA_API_KEY`)
 4. 자동 배포 완료
+
+## 👤 제작자 및 문의
+
+- 제작자: boam79
+- 문의: ckadltmfxhrxhrxhr@gmail.com
 
 ## ⚠️ 주의사항
 

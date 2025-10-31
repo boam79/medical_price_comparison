@@ -27,19 +27,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // 병원코드는 ykiho(암호화 요양기호) 기준으로 처리
     const codes = hospitalCodes.split(",");
     const allItems: NonCoveredItem[] = [];
 
     // 병원별로 API 호출
     for (const orgCd of codes) {
       try {
-        const url = new URL(`${API_BASE_URL}/getNonPaymentItemHmDamtInfo`);
+        const url = new URL(`${API_BASE_URL}/getNonPaymentItemHospDtlList`);
 
-        url.searchParams.set("ServiceKey", apiKey);
+        url.searchParams.set("serviceKey", apiKey);
         url.searchParams.set("pageNo", "1");
         url.searchParams.set("numOfRows", "1000");
-        url.searchParams.set("resultType", "json");
-        url.searchParams.set("orgCd", orgCd);
+        url.searchParams.set("_type", "json");
+        url.searchParams.set("ykiho", orgCd);
 
         const response = await fetch(url.toString(), {
           next: { revalidate: 3600 }, // 1시간 캐시
@@ -87,17 +88,25 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // 안전한 데이터 추출
-        const items = data.response?.body?.items;
-        let validItems: NonCoveredItem[] = [];
-        
+        // 안전한 데이터 추출 + 필드 매핑
+        const items: any = data.response?.body?.items;
+        const normalize = (item: any): NonCoveredItem => ({
+          org_cd: item?.ykiho ?? item?.org_cd ?? "",
+          org_nm: item?.yadmNm ?? item?.org_nm ?? "",
+          apc_nm: item?.npayKorNm ?? item?.apc_nm ?? "",
+          apc_cd: item?.npayCd ?? item?.apc_cd ?? "",
+          price: item?.curAmt ?? item?.price ?? 0,
+          med_rnk_unit: item?.med_rnk_unit ?? "",
+          med_rnk_cnt: item?.med_rnk_cnt ?? undefined,
+          reci_clsf_cd: item?.reci_clsf_cd ?? undefined,
+          rpt_ym: item?.adtFrDd ?? item?.rpt_ym ?? undefined,
+        });
+
         if (Array.isArray(items)) {
-          validItems = items as NonCoveredItem[];
+          allItems.push(...(items as any[]).map(normalize));
         } else if (items) {
-          validItems = [items as NonCoveredItem];
+          allItems.push(normalize(items as any));
         }
-        
-        allItems.push(...validItems);
       } catch (error) {
         console.error(`Error fetching items for ${orgCd}:`, error);
         // 개별 병원 실패는 무시하고 계속 진행
