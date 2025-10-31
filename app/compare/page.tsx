@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ComparisonResult } from "@/types";
 
-export default function ComparePage() {
+function CompareContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [results, setResults] = useState<ComparisonResult[]>([]);
@@ -318,3 +318,19 @@ export default function ComparePage() {
   );
 }
 
+export default function ComparePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="text-center">
+          <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <p className="text-lg text-gray-600 dark:text-gray-300">
+            로딩 중...
+          </p>
+        </div>
+      </div>
+    }>
+      <CompareContent />
+    </Suspense>
+  );
+}
