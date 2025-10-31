@@ -29,8 +29,9 @@ export async function GET(request: NextRequest) {
     const url = new URL(`${API_BASE_URL_PRIMARY}/getHospBasisList`);
 
     // 필수 파라미터
-    // 게이트웨이 호환을 위해 'ServiceKey' 사용
+    // 게이트웨이 구현 편차 대응: 두 파라미터 모두 전송
     url.searchParams.set("ServiceKey", apiKey);
+    url.searchParams.set("serviceKey", apiKey);
     url.searchParams.set("pageNo", "1");
     url.searchParams.set("numOfRows", "50");
     // 일부 게이트웨이는 JSON 응답을 지원 (미지원 시 XML → mock fallback 동작)

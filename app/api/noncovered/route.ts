@@ -36,8 +36,9 @@ export async function GET(request: NextRequest) {
       try {
         const url = new URL(`${API_BASE_URL}/getNonPaymentItemHospDtlList`);
 
-        // 게이트웨이 호환을 위해 'ServiceKey' 사용
+        // 게이트웨이 구현 편차 대응: 두 파라미터 모두 전송
         url.searchParams.set("ServiceKey", apiKey);
+        url.searchParams.set("serviceKey", apiKey);
         url.searchParams.set("pageNo", "1");
         url.searchParams.set("numOfRows", "1000");
         url.searchParams.set("_type", "json");
