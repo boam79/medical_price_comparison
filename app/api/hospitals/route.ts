@@ -58,7 +58,11 @@ export async function GET(request: NextRequest) {
 
     // 안전한 데이터 추출
     const items = data.response?.body?.items;
-    let hospitals: Hospital[] = Array.isArray(items) ? items : [];
+    let hospitals: Hospital[] = Array.isArray(items) 
+      ? items 
+      : items 
+        ? [items]  // 단일 객체인 경우 배열로 변환
+        : [];
 
     // 클라이언트 측 필터링 (searchTerm이 있는 경우)
     if (searchTerm) {

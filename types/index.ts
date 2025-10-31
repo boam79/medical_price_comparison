@@ -20,13 +20,13 @@ export interface NonCoveredItem {
 }
 
 export interface HospitalApiResponse {
-  response: {
-    header: {
+  response?: {
+    header?: {
       resultCode: string;
       resultMsg: string;
     };
-    body: {
-      items: Hospital[] | NonCoveredItem[];
+    body?: {
+      items?: Hospital[] | NonCoveredItem[] | Hospital | NonCoveredItem | null;
       totalCount?: number;
     };
   };
