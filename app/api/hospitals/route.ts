@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { HospitalApiResponse, Hospital } from "@/types";
 
-// 병원 기본목록 실제 엔드포인트로 교체
-const API_BASE_URL = "https://apis.data.go.kr/B551182/hospInfoServicev2";
+// 병원 기본목록 실제 엔드포인트
+const API_BASE_URL_PRIMARY = "https://apis.data.go.kr/B551182/hospInfoServicev2";
+const API_BASE_URL_FALLBACK = "http://apis.data.go.kr/B551182/hospInfoServicev2";
 
 /**
  * 병원 목록 조회 API
@@ -25,50 +26,36 @@ export async function GET(request: NextRequest) {
     }
 
     // 공공데이터 API 호출 (병원기본목록)
-    const url = new URL(`${API_BASE_URL}/getHospBasisList`);
+    const url = new URL(`${API_BASE_URL_PRIMARY}/getHospBasisList`);
 
     // 필수 파라미터
     url.searchParams.set("serviceKey", apiKey);
     url.searchParams.set("pageNo", "1");
-    url.searchParams.set("numOfRows", "100");
+    url.searchParams.set("numOfRows", "50");
     // 일부 게이트웨이는 JSON 응답을 지원 (미지원 시 XML → mock fallback 동작)
     url.searchParams.set("_type", "json");
 
     // 선택 파라미터
     if (sido) url.searchParams.set("sidoCd", sido);
     if (gugun) url.searchParams.set("sgguCd", gugun);
+    if (searchTerm) url.searchParams.set("yadmNm", searchTerm);
 
-    const response = await fetch(url.toString(), {
-      next: { revalidate: 3600 }, // 1시간 캐시
+    let response = await fetch(url.toString(), {
+      next: { revalidate: 120 },
+      cache: "no-store",
     });
 
     if (!response.ok) {
-      console.error(`API request failed. Status: ${response.status}, URL: ${url.toString()}`);
-      // API 호출 실패 시 샘플 데이터 반환 (개발용)
-      return NextResponse.json({
-        hospitals: [
-          {
-            org_cd: "A001",
-            org_nm: "서울아산병원",
-            si: "서울특별시",
-            gun: "송파구"
-          },
-          {
-            org_cd: "A002",
-            org_nm: "삼성서울병원",
-            si: "서울특별시",
-            gun: "강남구"
-          },
-          {
-            org_cd: "A003",
-            org_nm: "세브란스병원",
-            si: "서울특별시",
-            gun: "서대문구"
-          }
-        ],
-        totalCount: 3,
-        _isMock: true
-      });
+      // 1차 실패 시 http 베이스로 재시도
+      const fbUrl = new URL(url.toString().replace(API_BASE_URL_PRIMARY, API_BASE_URL_FALLBACK));
+      response = await fetch(fbUrl.toString(), { next: { revalidate: 120 }, cache: "no-store" });
+      if (!response.ok) {
+        console.error(`Hospitals API failed. primary=${url.toString()} status=${response.status}`);
+        return NextResponse.json(
+          { error: "Upstream API request failed", upstreamStatus: response.status },
+          { status: 502 }
+        );
+      }
     }
 
     const data: HospitalApiResponse = await response.json();
