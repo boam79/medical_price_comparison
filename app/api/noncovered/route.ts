@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.PUBLIC_DATA_API_KEY;
+    const apiKey = process.env.PUBLIC_DATA_API_KEY?.trim();
     if (!apiKey) {
       return NextResponse.json(
         { error: "API key is not configured" },
@@ -36,7 +36,8 @@ export async function GET(request: NextRequest) {
       try {
         const url = new URL(`${API_BASE_URL}/getNonPaymentItemHospDtlList`);
 
-        url.searchParams.set("serviceKey", apiKey);
+        // 게이트웨이 호환을 위해 'ServiceKey' 사용
+        url.searchParams.set("ServiceKey", apiKey);
         url.searchParams.set("pageNo", "1");
         url.searchParams.set("numOfRows", "1000");
         url.searchParams.set("_type", "json");

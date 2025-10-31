@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const searchTerm = searchParams.get("search");
 
     // API 키는 서버 환경변수에서 가져옴
-    const apiKey = process.env.PUBLIC_DATA_API_KEY;
+    const apiKey = process.env.PUBLIC_DATA_API_KEY?.trim();
     if (!apiKey) {
       return NextResponse.json(
         { error: "API key is not configured" },
@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
     const url = new URL(`${API_BASE_URL_PRIMARY}/getHospBasisList`);
 
     // 필수 파라미터
-    url.searchParams.set("serviceKey", apiKey);
+    // 게이트웨이 호환을 위해 'ServiceKey' 사용
+    url.searchParams.set("ServiceKey", apiKey);
     url.searchParams.set("pageNo", "1");
     url.searchParams.set("numOfRows", "50");
     // 일부 게이트웨이는 JSON 응답을 지원 (미지원 시 XML → mock fallback 동작)
