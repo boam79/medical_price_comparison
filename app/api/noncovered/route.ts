@@ -52,13 +52,15 @@ export async function GET(request: NextRequest) {
 
         const data: HospitalApiResponse = await response.json();
 
-        if (data.response.header.resultCode !== "00") {
-          console.error(`API error for ${orgCd}:`, data.response.header.resultMsg);
+        if (data.response?.header?.resultCode !== "00") {
+          console.error(`API error for ${orgCd}:`, data.response?.header?.resultMsg || "Unknown error");
           continue;
         }
 
-        const items = (data.response.body.items as NonCoveredItem[]) || [];
-        allItems.push(...items);
+        // 안전한 데이터 추출
+        const items = data.response?.body?.items;
+        const validItems: NonCoveredItem[] = Array.isArray(items) ? items : [];
+        allItems.push(...validItems);
       } catch (error) {
         console.error(`Error fetching items for ${orgCd}:`, error);
         // 개별 병원 실패는 무시하고 계속 진행

@@ -47,16 +47,18 @@ export async function GET(request: NextRequest) {
     const data: HospitalApiResponse = await response.json();
 
     // 에러 처리
-    if (data.response.header.resultCode !== "00") {
+    if (data.response?.header?.resultCode !== "00") {
       return NextResponse.json(
         {
-          error: data.response.header.resultMsg,
+          error: data.response?.header?.resultMsg || "API 호출 실패",
         },
         { status: 400 }
       );
     }
 
-    let hospitals: Hospital[] = (data.response.body.items as Hospital[]) || [];
+    // 안전한 데이터 추출
+    const items = data.response?.body?.items;
+    let hospitals: Hospital[] = Array.isArray(items) ? items : [];
 
     // 클라이언트 측 필터링 (searchTerm이 있는 경우)
     if (searchTerm) {
